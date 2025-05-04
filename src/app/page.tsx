@@ -152,7 +152,7 @@ export default function Page() {
       {/* Chat List */}
       <div className="w-96 bg-white border-r border-gray-200 flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <span className="text-2xl font-semibold text-[#25d366]">WhatsApp</span>
+          <span className="text-2xl font-semibold text-[#25d366]">ChatApp</span>
           <button className="text-gray-500 hover:text-[#25d366]">
             <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="19" cy="12" r="2" fill="currentColor"/><circle cx="5" cy="12" r="2" fill="currentColor"/></svg>
           </button>
