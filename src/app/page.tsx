@@ -1,253 +1,489 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+
+// Types
+interface User {
+  id: string;
+  name: string;
+  avatar: string;
+  status: string;
+  online: boolean;
+  typing: boolean;
+}
+interface Message {
+  id: string;
+  userId: string;
+  text: string;
+  time: string;
+  reactions: { [emoji: string]: string[] };
+  image?: string;
+  file?: string;
+  voice?: string;
+}
 
 // Mock Data
-const users = [
-  {
-    id: "1",
-    name: "Mandeep Bhaiya",
-    avatar: "https://randomuser.me/api/portraits/men/32.jpg",
-    status: "online",
-  },
-  {
-    id: "2",
-    name: "Maya Ma'am",
-    avatar: "https://randomuser.me/api/portraits/women/44.jpg",
-    status: "offline",
-  },
-  {
-    id: "3",
-    name: "Aakash Rai",
-    avatar: "https://randomuser.me/api/portraits/men/45.jpg",
-    status: "online",
-  },
-  {
-    id: "4",
-    name: "Abheepay_Card_Swipe",
-    avatar: "https://randomuser.me/api/portraits/men/46.jpg",
-    status: "offline",
-  },
-  {
-    id: "5",
-    name: "Mrityunjay Roy Sir",
-    avatar: "https://randomuser.me/api/portraits/men/47.jpg",
-    status: "online",
-  },
-  {
-    id: "6",
-    name: "Malika Ji",
-    avatar: "https://randomuser.me/api/portraits/women/48.jpg",
-    status: "away",
-  },
+const randomAvatars = [
+  "https://randomuser.me/api/portraits/men/32.jpg",
+  "https://randomuser.me/api/portraits/women/44.jpg",
+  "https://randomuser.me/api/portraits/men/45.jpg",
+  "https://randomuser.me/api/portraits/women/48.jpg",
+  "https://randomuser.me/api/portraits/men/46.jpg",
+  "https://randomuser.me/api/portraits/women/49.jpg",
 ];
-
-const chats = [
-  {
-    id: "1",
-    userId: "1",
-    lastMessage: "Ok",
-    lastTime: "6:35 pm",
-    unread: 1,
-    messages: [
-      { from: "1", text: "Ok", time: "6:35 pm" },
-      { from: "me", text: "Hello!", time: "6:34 pm" },
-    ],
-  },
-  {
-    id: "2",
-    userId: "2",
-    lastMessage: "Photo",
-    lastTime: "4:59 pm",
-    unread: 0,
-    messages: [
-      { from: "2", text: "Photo", time: "4:59 pm" },
-      { from: "me", text: "Send the update", time: "4:58 pm" },
-    ],
-  },
-  {
-    id: "3",
-    userId: "3",
-    lastMessage: "Team name...",
-    lastTime: "11:11 am",
-    unread: 0,
-    messages: [
-      { from: "3", text: "Date--04 may 2025 Team name...", time: "11:11 am" },
-    ],
-  },
-  {
-    id: "4",
-    userId: "4",
-    lastMessage: "DEAR TEAM MEMBER OF...",
-    lastTime: "Yesterday",
-    unread: 0,
-    messages: [
-      { from: "4", text: "DEAR TEAM MEMBER OF...", time: "Yesterday" },
-    ],
-  },
-  {
-    id: "5",
-    userId: "5",
-    lastMessage: "Humko nhi lagta sir ye kar payega...",
-    lastTime: "Yesterday",
-    unread: 0,
-    messages: [
-      { from: "5", text: "Humko nhi lagta sir ye kar payega...", time: "Yesterday" },
-    ],
-  },
-  {
-    id: "6",
-    userId: "6",
-    lastMessage: "Hmmmmmm ji",
-    lastTime: "Yesterday",
-    unread: 0,
-    messages: [
-      { from: "6", text: "Hmmmmmm ji", time: "Yesterday" },
-    ],
-  },
+const unsplashImages = [
+  "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80",
+  "https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=400&q=80",
+  "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=400&q=80",
 ];
+const initialUsers: User[] = [
+  { id: "1", name: "Alice", avatar: randomAvatars[1], status: "online", online: true, typing: false },
+  { id: "2", name: "Bob", avatar: randomAvatars[0], status: "brb", online: true, typing: false },
+  { id: "3", name: "Charlie", avatar: randomAvatars[2], status: "busy", online: true, typing: false },
+  { id: "4", name: "Daisy", avatar: randomAvatars[3], status: "online", online: true, typing: false },
+];
+const myId = "1";
+const initialMessages: Message[] = [
+  { id: "m1", userId: "2", text: "Hey Alice!", time: "09:00", reactions: {}, image: unsplashImages[0] },
+  { id: "m2", userId: "1", text: "Hi Bob! 👋", time: "09:01", reactions: {} },
+  { id: "m3", userId: "3", text: "Morning everyone!", time: "09:02", reactions: { "👍": ["1"] }, file: "ProjectPlan.pdf" },
+];
+const emojiList = ["👍", "😂", "❤️", "😮", "😢", "🔥"];
+const statusList = ["online", "brb", "busy"];
+const bgPattern = "https://www.transparenttextures.com/patterns/cubes.png";
 
 export default function Page() {
-  const [selectedChat, setSelectedChat] = useState(chats[0]);
-  const [message, setMessage] = useState("");
-  const [chatList, setChatList] = useState(chats);
-  const [search, setSearch] = useState("");
+  const [users, setUsers] = useState<User[]>(initialUsers);
+  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [input, setInput] = useState("");
+  const [myStatus, setMyStatus] = useState("online");
+  const [showEmoji, setShowEmoji] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [dark, setDark] = useState(false);
+  const [uploadImage, setUploadImage] = useState<string | null>(null);
+  const [uploadFile, setUploadFile] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const [recentEmojis, setRecentEmojis] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Scroll to bottom on new message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [selectedChat]);
+  }, [messages]);
 
-  const handleSend = () => {
-    if (!message.trim()) return;
-    const newMsg = { from: "me", text: message, time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) };
-    setChatList((prev) =>
-      prev.map((c) =>
-        c.id === selectedChat.id
-          ? { ...c, messages: [...c.messages, newMsg], lastMessage: message, lastTime: newMsg.time }
-          : c
-      )
-    );
-    setSelectedChat((prev) => ({ ...prev, messages: [...prev.messages, newMsg], lastMessage: message, lastTime: newMsg.time }));
-    setMessage("");
+  // Simulate other users typing
+  useEffect(() => {
+    if (input) {
+      setTyping(true);
+      setUsers((prev) => prev.map(u => u.id === myId ? { ...u, typing: true } : u));
+    } else {
+      setTyping(false);
+      setUsers((prev) => prev.map(u => u.id === myId ? { ...u, typing: false } : u));
+    }
+  }, [input]);
+
+  // Simulate someone else typing randomly
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setUsers((prev) => prev.map(u =>
+        u.id !== myId && Math.random() < 0.1
+          ? { ...u, typing: !u.typing }
+          : u
+      ));
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Send message
+  const sendMessage = () => {
+    if (!input.trim() && !uploadImage && !uploadFile && !isRecording) return;
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `m${prev.length + 1}`,
+        userId: myId,
+        text: input,
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        reactions: {},
+        image: uploadImage || undefined,
+        file: uploadFile || undefined,
+        voice: isRecording ? "voice-message.mp3" : undefined,
+      },
+    ]);
+    setInput("");
+    setUploadImage(null);
+    setUploadFile(null);
+    setIsRecording(false);
   };
 
-  const filteredChats = chatList.filter((c) => {
-    const user = users.find((u) => u.id === c.userId);
-    return user && user.name.toLowerCase().includes(search.toLowerCase());
-  });
+  // Add emoji reaction
+  const addReaction = (msgId: string, emoji: string) => {
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== msgId) return m;
+        const usersReacted = m.reactions[emoji] || [];
+        const hasReacted = usersReacted.includes(myId);
+        return {
+          ...m,
+          reactions: {
+            ...m.reactions,
+            [emoji]: hasReacted
+              ? usersReacted.filter((id) => id !== myId)
+              : [...usersReacted, myId],
+          },
+        };
+      })
+    );
+    setRecentEmojis((prev) => [emoji, ...prev.filter(e => e !== emoji)].slice(0, 6));
+  };
+
+  // Change status
+  const changeStatus = (status: string) => {
+    setMyStatus(status);
+    setUsers((prev) => prev.map(u => u.id === myId ? { ...u, status } : u));
+  };
+
+  // Responsive sidebar toggle
+  const handleSidebarToggle = () => setSidebarOpen((open) => !open);
+  const handleSidebarClose = () => setSidebarOpen(false);
+
+  // Dark mode toggle
+  useEffect(() => {
+    if (dark) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [dark]);
+
+  // Handle image upload (mocked)
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setUploadImage(URL.createObjectURL(e.target.files[0]));
+    }
+  };
+  // Handle file upload (mocked)
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setUploadFile(e.target.files[0].name);
+    }
+  };
+  // Handle voice message (mocked)
+  const handleVoice = () => {
+    setIsRecording(!isRecording);
+  };
+
+  // WhatsApp-style animated typing dots
+  const TypingDots = () => (
+    <span className="inline-flex items-center gap-0.5">
+      <span className="w-1.5 h-1.5 bg-[#25d366] rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+      <span className="w-1.5 h-1.5 bg-[#25d366] rounded-full animate-bounce" style={{ animationDelay: "100ms" }} />
+      <span className="w-1.5 h-1.5 bg-[#25d366] rounded-full animate-bounce" style={{ animationDelay: "200ms" }} />
+    </span>
+  );
+
+  // Bubble tail SVGs
+  const BubbleTailLeft = () => (
+    <svg className="absolute -left-2 bottom-0" width="16" height="24" viewBox="0 0 16 24"><path d="M16 0v24L0 12z" fill="#fff" className="dark:fill-gray-800"/></svg>
+  );
+  const BubbleTailRight = () => (
+    <svg className="absolute -right-2 bottom-0" width="16" height="24" viewBox="0 0 16 24"><path d="M0 0v24l16-12z" fill="#dcf8c6"/></svg>
+  );
 
   return (
-    <div className="flex h-screen bg-[#f7f9fa]">
-      {/* Sidebar */}
-      <div className="w-20 bg-[#f0f2f5] flex flex-col items-center py-4 border-r border-gray-200">
-        <div className="bg-[#25d366] w-12 h-12 rounded-full flex items-center justify-center mb-6">
-          <svg width="28" height="28" fill="none" viewBox="0 0 32 32"><path fill="#fff" d="M16 2.667A13.333 13.333 0 0 0 4.12 24.56L2.68 29.72a1.333 1.333 0 0 0 1.6 1.6l5.16-1.44A13.333 13.333 0 1 0 16 2.667Zm0 24A10.667 10.667 0 0 1 8.2 25.2a1.333 1.333 0 0 0-.92-.16l-3.36.94.94-3.36a1.333 1.333 0 0 0-.16-.92A10.667 10.667 0 1 1 16 26.667Z"/><path fill="#fff" d="M23.32 19.6c-.36-.18-2.12-1.04-2.44-1.16-.32-.12-.56-.18-.8.18-.24.36-.92 1.16-1.12 1.4-.2.24-.4.28-.76.1-.36-.18-1.52-.56-2.9-1.8-1.07-.96-1.8-2.16-2-2.52-.2-.36-.02-.56.16-.74.16-.16.36-.4.54-.6.18-.2.24-.36.36-.6.12-.24.06-.44-.02-.62-.08-.18-.8-1.92-1.1-2.64-.3-.72-.6-.62-.8-.62-.2 0-.44-.02-.68-.02-.24 0-.62.08-.94.36-.32.28-1.24 1.2-1.24 2.92 0 1.72 1.24 3.38 1.42 3.62.18.24 2.44 3.74 6.06 5.08.84.32 1.5.5 2.02.64.84.22 1.6.18 2.2.1.68-.1 2.12-.86 2.42-1.7.3-.84.3-1.56.22-1.7-.08-.14-.32-.22-.68-.4Z"/></svg>
-        </div>
-        <div className="flex flex-col gap-6 text-gray-400">
-          <button className="hover:text-[#25d366]"><svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-2h2v2Zm0-4h-2V7h2v6Z" fill="currentColor"/></svg></button>
-          <button className="hover:text-[#25d366]"><svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-3.33 0-10 1.67-10 5v3h20v-3c0-3.33-6.67-5-10-5Z" fill="currentColor"/></svg></button>
-          <button className="hover:text-[#25d366]"><svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-2h2v2Zm0-4h-2V7h2v6Z" fill="currentColor"/></svg></button>
-        </div>
-      </div>
-      {/* Chat List */}
-      <div className="w-96 bg-white border-r border-gray-200 flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <span className="text-2xl font-semibold text-[#25d366]">ChatApp</span>
-          <button className="text-gray-500 hover:text-[#25d366]">
-            <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="19" cy="12" r="2" fill="currentColor"/><circle cx="5" cy="12" r="2" fill="currentColor"/></svg>
-          </button>
-        </div>
-        <div className="px-4 py-3 bg-[#f6f6f6]">
-          <div className="relative">
-            <input
-              className="w-full rounded-lg pl-10 pr-4 py-2 bg-[#f0f2f5] text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#25d366]"
-              placeholder="Search or start a new chat"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2"/><path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-          </div>
-          <div className="flex gap-2 mt-3">
-            <button className="px-3 py-1 rounded-full text-sm bg-[#25d366] text-white">All</button>
-            <button className="px-3 py-1 rounded-full text-sm bg-[#f0f2f5] text-gray-700">Unread</button>
-            <button className="px-3 py-1 rounded-full text-sm bg-[#f0f2f5] text-gray-700">Groups</button>
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          {filteredChats.map((chat) => {
-            const user = users.find((u) => u.id === chat.userId)!;
-            return (
-              <div
-                key={chat.id}
-                className={`flex items-center gap-3 px-6 py-4 cursor-pointer border-b border-gray-100 hover:bg-[#f6f6f6] ${selectedChat.id === chat.id ? "bg-[#e7f8ef]" : ""}`}
-                onClick={() => setSelectedChat(chat)}
-              >
-                <img src={user.avatar} alt={user.name} className="w-12 h-12 rounded-full object-cover" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-gray-900 truncate">{user.name}</span>
-                    <span className="text-xs text-gray-400">{chat.lastTime}</span>
-                  </div>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-sm text-gray-500 truncate">{chat.lastMessage}</span>
-                    {chat.unread > 0 && (
-                      <span className="ml-2 bg-[#25d366] text-white text-xs rounded-full px-2 py-0.5">{chat.unread}</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+    <div className={`flex h-screen bg-[#e5ddd5] dark:bg-gray-950 overflow-hidden ${dark ? "dark" : ""}`} style={{ backgroundImage: `url(${bgPattern})` }}>
+      {/* Sidebar: Online Users */}
+      {/* Mobile Drawer */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div
+            initial={{ x: -320, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: -320, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed inset-0 z-40 flex md:hidden"
+          >
+            <div className="w-72 bg-white dark:bg-gray-900 border-r border-gray-200 flex flex-col h-full shadow-xl">
+              <SidebarContent
+                users={users}
+                myId={myId}
+                myStatus={myStatus}
+                changeStatus={changeStatus}
+                onClose={handleSidebarClose}
+                dark={dark}
+                setDark={setDark}
+              />
+            </div>
+            <div className="flex-1 bg-black/30" onClick={handleSidebarClose} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* Desktop Sidebar */}
+      <div className="hidden md:flex w-80 bg-white dark:bg-gray-900 border-r border-gray-200 flex-col h-full">
+        <SidebarContent users={users} myId={myId} myStatus={myStatus} changeStatus={changeStatus} dark={dark} setDark={setDark} />
       </div>
       {/* Chat Window */}
-      <div className="flex-1 flex flex-col bg-[#f7f9fa]">
+      <div className="flex-1 flex flex-col bg-[#e5ddd5] dark:bg-gray-950 relative" style={{ backgroundImage: `url(${bgPattern})` }}>
         {/* Chat Header */}
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200 bg-white">
-          <img src={users.find(u => u.id === selectedChat.userId)?.avatar} alt="avatar" className="w-10 h-10 rounded-full object-cover" />
-          <div className="flex-1">
-            <div className="font-medium text-gray-900">{users.find(u => u.id === selectedChat.userId)?.name}</div>
-            <div className="text-xs text-gray-500">{users.find(u => u.id === selectedChat.userId)?.status}</div>
+        <div className="flex items-center gap-3 px-4 md:px-6 py-3 md:py-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 sticky top-0 z-10 shadow-sm">
+          <button className="md:hidden text-gray-500 hover:text-[#25d366] p-2" onClick={handleSidebarToggle} aria-label="Open sidebar">
+            <svg width="28" height="28" fill="none" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+          </button>
+          <img src={users[0].avatar} alt="avatar" className="w-10 h-10 rounded-full object-cover border-2 border-[#25d366]" />
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-gray-900 dark:text-white text-base md:text-lg tracking-tight">General Chat</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 truncate">All online users</div>
           </div>
-          <button className="text-gray-500 hover:text-[#25d366]">
-            <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="19" cy="12" r="2" fill="currentColor"/><circle cx="5" cy="12" r="2" fill="currentColor"/></svg>
+          <button
+            className="ml-2 text-gray-400 hover:text-[#25d366] transition-colors duration-200"
+            onClick={() => setDark(!dark)}
+            aria-label="Toggle dark mode"
+          >
+            {dark ? (
+              <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 0 1 12.79 3a7 7 0 1 0 8.21 9.79Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            ) : (
+              <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" stroke="currentColor" strokeWidth="2"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" strokeWidth="2"/></svg>
+            )}
           </button>
         </div>
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-8 py-6 space-y-4">
-          {selectedChat.messages.map((msg, idx) => {
-            const isMe = msg.from === "me";
-            const user = users.find(u => u.id === selectedChat.userId)!;
-            return (
-              <div key={idx} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-xs px-4 py-2 rounded-lg shadow-sm ${isMe ? "bg-[#dcf8c6] text-gray-900" : "bg-white text-gray-900"}`}>
-                  <div>{msg.text}</div>
-                  <div className="text-xs text-gray-400 text-right mt-1">{msg.time}</div>
-                </div>
-              </div>
-            );
-          })}
+        <div className="flex-1 overflow-y-auto px-2 md:px-8 py-4 md:py-6 space-y-3 md:space-y-4 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-800">
+          <AnimatePresence initial={false}>
+            {messages.map((msg, idx) => {
+              const isMe = msg.userId === myId;
+              const user = users.find(u => u.id === msg.userId)!;
+              return (
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30, delay: idx * 0.03 }}
+                  className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+                >
+                  <div className="flex items-end gap-2">
+                    {!isMe && <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full object-cover border border-gray-200 dark:border-gray-700" />}
+                    <motion.div
+                      whileHover={{ scale: 1.03 }}
+                      className={`relative group font-["Segoe UI","Roboto","San Francisco",sans-serif] ${isMe ? "ml-8" : "mr-8"}`}
+                    >
+                      <div className={`relative max-w-xs md:max-w-md px-4 py-2 rounded-2xl shadow-md transition-colors duration-200 ${isMe ? "bg-[#dcf8c6] text-gray-900" : "bg-white dark:bg-gray-800 text-gray-900 dark:text-white"} ${isMe ? "whatsapp-bubble-right" : "whatsapp-bubble-left"}`}
+                        style={{ boxShadow: isMe ? "0 2px 8px 0 #b9f5d8" : "0 2px 8px 0 #e0e0e0" }}>
+                        {/* Bubble tail */}
+                        {!isMe && <span className="absolute -left-2 bottom-0"><BubbleTailLeft /></span>}
+                        {isMe && <span className="absolute -right-2 bottom-0"><BubbleTailRight /></span>}
+                        <div className="flex flex-col gap-1">
+                          <span className="break-words leading-relaxed text-base">{msg.text}</span>
+                          {msg.image && (
+                            <img src={msg.image} alt="shared" className="w-40 h-28 object-cover rounded mt-2 border shadow" />
+                          )}
+                          {msg.file && (
+                            <div className="flex items-center gap-1 mt-2 text-xs text-blue-600 dark:text-blue-400">
+                              <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="2"/><path d="M14 2v6h6" stroke="currentColor" strokeWidth="2"/></svg>
+                              <span className="underline cursor-pointer hover:text-blue-800">{msg.file}</span>
+                            </div>
+                          )}
+                          {msg.voice && (
+                            <div className="flex items-center gap-1 mt-2 text-xs text-green-600 dark:text-green-400">
+                              <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M12 3v18m9-9H3" stroke="currentColor" strokeWidth="2"/></svg>
+                              <span>Voice message</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex gap-1 mt-2">
+                          {Object.entries(msg.reactions).map(([emoji, ids]) => (
+                            <button
+                              key={emoji}
+                              className={`text-xs px-1.5 py-0.5 rounded-full border ${ids.includes(myId) ? "bg-[#25d366] text-white border-[#25d366]" : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white border-gray-200 dark:border-gray-700"} transition-colors duration-200 shadow-sm`}
+                              onClick={() => addReaction(msg.id, emoji)}
+                            >
+                              {emoji} {ids.length}
+                            </button>
+                          ))}
+                        </div>
+                        {/* Emoji Picker */}
+                        <AnimatePresence>
+                          {showEmoji === msg.id && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: 10 }}
+                              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                              className="absolute z-10 bottom-12 left-0 bg-white dark:bg-gray-900 border rounded shadow p-2 flex gap-1 animate-pop"
+                            >
+                              {recentEmojis.length > 0 && (
+                                <div className="flex gap-1 border-b pb-1 mb-1">
+                                  {recentEmojis.map((emoji) => (
+                                    <button
+                                      key={emoji}
+                                      className="text-xl hover:scale-125 transition-transform"
+                                      onClick={() => { addReaction(msg.id, emoji); setShowEmoji(null); }}
+                                    >
+                                      {emoji}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                              {emojiList.map((emoji) => (
+                                <button
+                                  key={emoji}
+                                  className="text-xl hover:scale-125 transition-transform"
+                                  onClick={() => { addReaction(msg.id, emoji); setShowEmoji(null); }}
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                        <div className="flex items-center justify-end gap-1 mt-1">
+                          <span className="text-xs text-gray-400 dark:text-gray-300">{msg.time}</span>
+                          {isMe && (
+                            <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M1 13l4 4L15 7" stroke="#25d366" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        className="absolute -bottom-6 right-0 bg-white dark:bg-gray-900 rounded-full shadow-lg p-1 text-gray-400 hover:text-[#25d366] transition-colors duration-200 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                        onClick={() => setShowEmoji(msg.id === showEmoji ? null : msg.id)}
+                        aria-label="React with emoji"
+                      >
+                        😊
+                      </button>
+                    </motion.div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
           <div ref={messagesEndRef} />
         </div>
+        {/* Typing Indicator */}
+        <div className="px-4 md:px-8 pb-2 text-xs text-gray-500 dark:text-gray-400 min-h-[20px] flex gap-4 items-center">
+          <AnimatePresence>
+            {users.filter(u => u.id !== myId && u.typing).map(u => (
+              <motion.span
+                key={u.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="flex items-center gap-1"
+              >
+                <span className="font-medium text-[#25d366]">{u.name}</span>
+                <TypingDots />
+              </motion.span>
+            ))}
+          </AnimatePresence>
+        </div>
         {/* Message Input */}
-        <div className="px-6 py-4 bg-white border-t border-gray-200 flex items-center gap-3">
-          <button className="text-gray-400 hover:text-[#25d366]">
-            <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10Zm1-14h-2v6h2V8Zm0 8h-2v2h2v-2Z" fill="currentColor"/></svg>
+        <div className="px-2 md:px-6 py-3 md:py-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex items-center gap-2 md:gap-3 sticky bottom-0 z-10 backdrop-blur-md bg-opacity-80 dark:bg-opacity-80 shadow-lg">
+          <label className="cursor-pointer text-gray-400 hover:text-[#25d366] transition-colors duration-200">
+            <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+            <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M21 15V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10" stroke="currentColor" strokeWidth="2"/><rect x="7" y="13" width="3" height="3" rx="1.5" stroke="currentColor" strokeWidth="2"/><path d="M21 19v-2a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2Z" stroke="currentColor" strokeWidth="2"/></svg>
+          </label>
+          <label className="cursor-pointer text-gray-400 hover:text-[#25d366] transition-colors duration-200">
+            <input type="file" className="hidden" onChange={handleFileUpload} />
+            <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M15.172 7l-6.586 6.586a2 2 0 1 0 2.828 2.828l7.071-7.07a4 4 0 1 0-5.657-5.657l-8.485 8.485a6 6 0 1 0 8.485 8.485l1.415-1.414" stroke="currentColor" strokeWidth="2"/></svg>
+          </label>
+          <button
+            className={`text-gray-400 hover:text-[#25d366] transition-colors duration-200 ${isRecording ? "animate-pulse text-red-500" : ""}`}
+            onClick={handleVoice}
+            aria-label="Record voice message"
+          >
+            <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M12 1v14m6-7a6 6 0 1 1-12 0" stroke="currentColor" strokeWidth="2"/><circle cx="12" cy="19" r="2" stroke="currentColor" strokeWidth="2"/></svg>
           </button>
           <input
-            className="flex-1 rounded-full px-4 py-2 bg-[#f0f2f5] text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#25d366]"
+            className="flex-1 rounded-full px-4 py-2 bg-[#f0f2f5] dark:bg-gray-800 text-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#25d366] text-sm md:text-base shadow-inner"
             placeholder="Type a message"
-            value={message}
-            onChange={e => setMessage(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") handleSend(); }}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") sendMessage(); }}
           />
-          <button
-            className="bg-[#25d366] text-white rounded-full w-10 h-10 flex items-center justify-center hover:bg-[#20ba5a]"
-            onClick={handleSend}
+          <motion.button
+            whileTap={{ scale: 0.9, rotate: -10 }}
+            className="bg-[#25d366] text-white rounded-full w-12 h-12 flex items-center justify-center hover:bg-[#20ba5a] transition-colors duration-200 focus:outline-none shadow-lg border-2 border-white dark:border-gray-900"
+            onClick={sendMessage}
+            aria-label="Send message"
           >
-            <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M2 21l21-9-21-9v7l15 2-15 2v7z" fill="currentColor"/></svg>
+            <svg width="28" height="28" fill="none" viewBox="0 0 24 24"><path d="M2 21l21-9-21-9v7l15 2-15 2v7z" fill="currentColor"/></svg>
+          </motion.button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Sidebar content as a subcomponent for reuse
+function SidebarContent({ users, myId, myStatus, changeStatus, onClose, dark, setDark }: {
+  users: User[];
+  myId: string;
+  myStatus: string;
+  changeStatus: (s: string) => void;
+  onClose?: () => void;
+  dark: boolean;
+  setDark: (d: boolean) => void;
+}) {
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+        <span className="text-2xl font-semibold text-[#25d366]">Messenger</span>
+        <div className="flex gap-2">
+          {statusList.map((s) => (
+            <button
+              key={s}
+              className={`px-2 py-1 rounded text-xs capitalize ${myStatus === s ? "bg-[#25d366] text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-white"} transition-colors duration-200`}
+              onClick={() => changeStatus(s)}
+            >
+              {s}
+            </button>
+          ))}
+          <button
+            className="ml-2 text-gray-400 hover:text-[#25d366] transition-colors duration-200"
+            onClick={() => setDark(!dark)}
+            aria-label="Toggle dark mode"
+          >
+            {dark ? (
+              <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 0 1 12.79 3a7 7 0 1 0 8.21 9.79Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            ) : (
+              <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" stroke="currentColor" strokeWidth="2"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" strokeWidth="2"/></svg>
+            )}
           </button>
         </div>
+        {onClose && (
+          <button className="ml-2 text-gray-400 hover:text-[#25d366] md:hidden" onClick={onClose} aria-label="Close sidebar">
+            <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+          </button>
+        )}
+      </div>
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="mb-2 text-xs text-gray-400 uppercase tracking-wider">Online Users</div>
+        <AnimatePresence>
+          {users.filter(u => u.online).map((u, idx) => (
+            <motion.div
+              key={u.id}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.2, delay: idx * 0.03 }}
+              className="flex items-center gap-3 mb-4 group cursor-pointer hover:bg-[#e7f8ef] dark:hover:bg-gray-800 rounded-lg px-2 py-1 transition-colors"
+            >
+              <img src={u.avatar} alt={u.name} className="w-10 h-10 rounded-full object-cover border-2 border-[#25d366] group-hover:shadow-lg transition-shadow" />
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-gray-900 dark:text-white truncate flex items-center gap-2">
+                  {u.name}
+                  {u.id === myId && <span className="text-xs text-[#25d366]">(You)</span>}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                  <span>{u.status}</span>
+                  {u.typing && <span className="text-[#25d366] animate-pulse ml-2"><span className="inline-block align-middle"><svg width="16" height="16" fill="none" viewBox="0 0 24 24"><circle cx="4" cy="12" r="2" fill="#25d366" className="animate-bounce"/><circle cx="12" cy="12" r="2" fill="#25d366" className="animate-bounce" style={{ animationDelay: '100ms' }}/><circle cx="20" cy="12" r="2" fill="#25d366" className="animate-bounce" style={{ animationDelay: '200ms' }}/></svg></span> typing...</span>}
+                </div>
+              </div>
+              <span className={`w-3 h-3 rounded-full ${u.online ? "bg-green-500" : "bg-gray-300"} border-2 border-white dark:border-gray-900`}></span>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </div>
   );
